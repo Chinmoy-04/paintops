@@ -1,0 +1,61 @@
+services:
+  api:
+    build: .
+    container_name: paintops-api
+    ports:
+      - "8000:8000"
+    environment:
+      DEMO_MODE: "true"
+      DATABASE_URL: sqlite:////app/data/paintops.db
+      CHECKPOINT_DB_PATH: /app/data/checkpoints/langgraph.db
+      SOP_DIR: /app/data/sops
+      CHROMA_DIR: /app/data/chroma
+      LLM_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    volumes:
+      - paintops-data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ui:
+    build: .
+    container_name: paintops-ui
+    ports:
+      - "8501:8501"
+    environment:
+      PAINTOPS_API_BASE: http://api:8000
+      DEMO_MODE: "true"
+    depends_on:
+      api:
+        condition: service_healthy
+    command: >
+      streamlit run ui/dashboard.py --server.port 8501 --server.address 0.0.0.0
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: paintops-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      GENERIC_TIMEZONE: UTC
+    volumes:
+      - paintops-n8n:/home/node/.n8n
+      - ./n8n:/import:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  paintops-data:
+  paintops-n8n:

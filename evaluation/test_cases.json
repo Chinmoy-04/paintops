@@ -1,0 +1,322 @@
+[
+  {
+    "case_id": "TC-01",
+    "input_event": {
+      "event_id": "EV-TC-01",
+      "timestamp": "2026-10-30T12:00:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-10",
+      "body_id": "CAR-TC-01",
+      "defect_type": "dust_inclusion",
+      "model_confidence": 0.7,
+      "telemetry": {"booth_temperature_c": 23.0, "humidity_pct": 50.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "dust_inclusion",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-001"],
+    "expected_severity_band": ["low", "medium"]
+  },
+  {
+    "case_id": "TC-02",
+    "input_event": {
+      "event_id": "EV-TC-02",
+      "timestamp": "2026-10-30T12:10:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-11",
+      "body_id": "CAR-TC-02",
+      "defect_type": "orange_peel",
+      "model_confidence": 0.94,
+      "telemetry": {"booth_temperature_c": 24.5, "humidity_pct": 72.0, "airflow_m_s": 1.7},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 2,
+    "expected_defect_category": "orange_peel",
+    "expected_route": "action_required",
+    "expected_sop_ids": ["SOP-PAINT-002"],
+    "expected_severity_band": ["medium", "high", "critical"]
+  },
+  {
+    "case_id": "TC-03",
+    "input_event": {
+      "event_id": "EV-TC-03",
+      "timestamp": "2026-10-30T12:20:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-01",
+      "booth_id": "BOOTH-12",
+      "body_id": "CAR-TC-03",
+      "defect_type": "runs_sags",
+      "model_confidence": 0.97,
+      "telemetry": {"booth_temperature_c": 21.5, "humidity_pct": 45.0, "airflow_m_s": 1.6},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "runs_sags",
+    "expected_route": "action_required",
+    "expected_sop_ids": ["SOP-PAINT-004"],
+    "expected_severity_band": ["high", "critical"]
+  },
+  {
+    "case_id": "TC-04",
+    "input_event": {
+      "event_id": "EV-TC-04",
+      "timestamp": "2026-10-30T12:30:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-01",
+      "booth_id": "BOOTH-13",
+      "body_id": "CAR-TC-04",
+      "defect_type": "uneven_coverage",
+      "model_confidence": 0.65,
+      "telemetry": {"booth_temperature_c": 23.0, "humidity_pct": 52.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "uneven_coverage",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-005"],
+    "expected_severity_band": ["low", "medium"]
+  },
+  {
+    "case_id": "TC-05",
+    "input_event": {
+      "event_id": "EV-TC-05",
+      "timestamp": "2026-10-30T12:40:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-14",
+      "body_id": "CAR-TC-05",
+      "defect_type": "dust_inclusion",
+      "model_confidence": 0.98,
+      "telemetry": {"booth_temperature_c": 25.0, "humidity_pct": 75.0, "airflow_m_s": 1.5},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "dust_inclusion",
+    "expected_route": "action_required",
+    "expected_sop_ids": ["SOP-PAINT-001", "SOP-PAINT-003"],
+    "expected_severity_band": ["high", "critical"]
+  },
+  {
+    "case_id": "TC-06",
+    "input_event": {
+      "event_id": "EV-TC-06",
+      "timestamp": "2026-10-30T12:50:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-15",
+      "body_id": "CAR-TC-06",
+      "defect_type": "orange_peel",
+      "model_confidence": 0.72,
+      "telemetry": {"booth_temperature_c": 23.5, "humidity_pct": 58.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 1,
+    "expected_defect_category": "orange_peel",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-002"],
+    "expected_severity_band": ["low", "medium"]
+  },
+  {
+    "case_id": "TC-07",
+    "input_event": {
+      "event_id": "EV-TC-07",
+      "timestamp": "2026-10-30T13:00:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-01",
+      "booth_id": "BOOTH-16",
+      "body_id": "CAR-TC-07",
+      "defect_type": "runs_sags",
+      "model_confidence": 0.8,
+      "telemetry": {"booth_temperature_c": 22.0, "humidity_pct": 48.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 2,
+    "expected_defect_category": "runs_sags",
+    "expected_route": "action_required",
+    "expected_sop_ids": ["SOP-PAINT-004"],
+    "expected_severity_band": ["medium", "high"]
+  },
+  {
+    "case_id": "TC-08",
+    "input_event": {
+      "event_id": "EV-TC-08",
+      "timestamp": "2026-10-30T13:10:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-17",
+      "body_id": "CAR-TC-08",
+      "defect_type": "uneven_coverage",
+      "model_confidence": 0.98,
+      "telemetry": {"booth_temperature_c": 26.0, "humidity_pct": 40.0, "airflow_m_s": 1.4},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "uneven_coverage",
+    "expected_route": "action_required",
+    "expected_sop_ids": ["SOP-PAINT-005"],
+    "expected_severity_band": ["high", "critical"]
+  },
+  {
+    "case_id": "TC-09",
+    "input_event": {
+      "event_id": "EV-TC-09",
+      "timestamp": "2026-10-30T13:20:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-01",
+      "booth_id": "BOOTH-18",
+      "body_id": "CAR-TC-09",
+      "defect_type": "dust_inclusion",
+      "model_confidence": 0.6,
+      "telemetry": {"booth_temperature_c": 23.0, "humidity_pct": 55.0, "airflow_m_s": 2.1},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "dust_inclusion",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-001"],
+    "expected_severity_band": ["low", "medium"]
+  },
+  {
+    "case_id": "TC-10",
+    "input_event": {
+      "event_id": "EV-TC-10",
+      "timestamp": "2026-10-30T13:30:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-19",
+      "body_id": "CAR-TC-10",
+      "defect_type": "orange_peel",
+      "model_confidence": 0.91,
+      "telemetry": {"booth_temperature_c": 24.0, "humidity_pct": 70.0, "airflow_m_s": 1.7},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "orange_peel",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-002", "SOP-PAINT-003"],
+    "expected_severity_band": ["medium", "high"]
+  },
+  {
+    "case_id": "TC-11",
+    "input_event": {
+      "event_id": "EV-TC-11",
+      "timestamp": "2026-10-30T13:40:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-01",
+      "booth_id": "BOOTH-20",
+      "body_id": "CAR-TC-11",
+      "defect_type": "runs_sags",
+      "model_confidence": 0.55,
+      "telemetry": {"booth_temperature_c": 22.0, "humidity_pct": 50.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "runs_sags",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-004"],
+    "expected_severity_band": ["low", "medium"]
+  },
+  {
+    "case_id": "TC-12",
+    "input_event": {
+      "event_id": "EV-TC-12",
+      "timestamp": "2026-10-30T13:50:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-21",
+      "body_id": "CAR-TC-12",
+      "defect_type": "uneven_coverage",
+      "model_confidence": 0.85,
+      "telemetry": {"booth_temperature_c": 23.0, "humidity_pct": 51.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 2,
+    "expected_defect_category": "uneven_coverage",
+    "expected_route": "action_required",
+    "expected_sop_ids": ["SOP-PAINT-005"],
+    "expected_severity_band": ["medium", "high"]
+  },
+  {
+    "case_id": "TC-13",
+    "input_event": {
+      "event_id": "EV-TC-13",
+      "timestamp": "2026-10-30T14:00:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-01",
+      "booth_id": "BOOTH-22",
+      "body_id": "CAR-TC-13",
+      "defect_type": "dust_inclusion",
+      "model_confidence": 0.88,
+      "telemetry": {"booth_temperature_c": 23.0, "humidity_pct": 54.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 1,
+    "expected_defect_category": "dust_inclusion",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-001"],
+    "expected_severity_band": ["medium", "high"]
+  },
+  {
+    "case_id": "TC-14",
+    "input_event": {
+      "event_id": "EV-TC-14",
+      "timestamp": "2026-10-30T14:10:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-23",
+      "body_id": "CAR-TC-14",
+      "defect_type": "orange_peel",
+      "model_confidence": 0.93,
+      "telemetry": {"booth_temperature_c": 24.2, "humidity_pct": 71.0, "airflow_m_s": 1.75},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 2,
+    "expected_defect_category": "orange_peel",
+    "expected_route": "action_required",
+    "expected_sop_ids": ["SOP-PAINT-002"],
+    "expected_severity_band": ["medium", "high", "critical"]
+  },
+  {
+    "case_id": "TC-15",
+    "input_event": {
+      "event_id": "EV-TC-15",
+      "timestamp": "2026-10-30T14:20:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-01",
+      "booth_id": "BOOTH-24",
+      "body_id": "CAR-TC-15",
+      "defect_type": "runs_sags",
+      "model_confidence": 0.75,
+      "telemetry": {"booth_temperature_c": 22.5, "humidity_pct": 49.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "runs_sags",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-004", "SOP-PAINT-006"],
+    "expected_severity_band": ["low", "medium"]
+  },
+  {
+    "case_id": "TC-16",
+    "input_event": {
+      "event_id": "EV-TC-16",
+      "timestamp": "2026-10-30T14:30:00Z",
+      "plant_id": "PLANT-01",
+      "production_line": "PAINT-LINE-02",
+      "booth_id": "BOOTH-25",
+      "body_id": "CAR-TC-16",
+      "defect_type": "uneven_coverage",
+      "model_confidence": 0.7,
+      "telemetry": {"booth_temperature_c": 23.0, "humidity_pct": 50.0, "airflow_m_s": 2.0},
+      "source": "synthetic_cv_inspection"
+    },
+    "prior_same_booth_defect": 0,
+    "expected_defect_category": "uneven_coverage",
+    "expected_route": "monitor",
+    "expected_sop_ids": ["SOP-PAINT-005"],
+    "expected_severity_band": ["low", "medium"]
+  }
+]

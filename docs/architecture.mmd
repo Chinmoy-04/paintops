@@ -1,0 +1,19 @@
+flowchart TD
+    A["Synthetic inspection event / JSON fixture"] --> B["n8n Webhook"]
+    B --> C["Normalise payload"]
+    C --> D["FastAPI: POST /api/events"]
+    D --> E["LangGraph workflow"]
+    E --> F["Validate / deduplicate"]
+    F --> G["SQL: recent booth defects"]
+    G --> H["RAG: retrieve paint SOPs"]
+    H --> I["Analyse evidence"]
+    I --> J{"Deterministic route"}
+    J -->|"Monitor"| K["Record observation"]
+    J -->|"Action required"| L["Draft ticket"]
+    L --> M["Human review: interrupt"]
+    M -->|"Approved"| N["Create SQL ticket"]
+    M -->|"Rejected"| O["Record rejection"]
+    K --> P["Audit log"]
+    N --> P
+    O --> P
+    P --> Q["Streamlit review / status UI"]

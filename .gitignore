@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment / secrets
+.env
+*.pem
+
+# Local databases and indexes
+*.db
+*.db-wal
+*.db-shm
+data/checkpoints/
+data/chroma/
+*.sqlite
+*.sqlite3
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Streamlit / misc
+.streamlit/secrets.toml
+*.log

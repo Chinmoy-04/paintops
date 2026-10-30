@@ -1,0 +1,9 @@
+{
+  "n_cases": 16,
+  "classification_accuracy": 1.0,
+  "routing_accuracy": 1.0,
+  "sop_recall_at_3": 1.0,
+  "ticket_completeness": 1.0,
+  "tickets_created_without_approval": 0,
+  "limitations": "Synthetic labelled set only. Defect category is supplied by the fixture (no vision model). Scores do not imply production readiness."
+}

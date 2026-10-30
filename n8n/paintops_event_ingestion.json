@@ -1,0 +1,151 @@
+{
+  "name": "PaintOps Event Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "paintops-event",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-paintops-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "paintops-event"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "event_id",
+              "value": "={{ $json.event_id || $json.body.event_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp || $json.body.timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "plant_id",
+              "value": "={{ $json.plant_id || $json.body.plant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "production_line",
+              "value": "={{ $json.production_line || $json.body.production_line }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "booth_id",
+              "value": "={{ $json.booth_id || $json.body.booth_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "body_id",
+              "value": "={{ $json.body_id || $json.body.body_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "defect_type",
+              "value": "={{ $json.defect_type || $json.body.defect_type }}",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "model_confidence",
+              "value": "={{ $json.model_confidence || $json.body.model_confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "a9",
+              "name": "telemetry",
+              "value": "={{ $json.telemetry || $json.body.telemetry || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "a10",
+              "name": "source",
+              "value": "={{ $json.source || $json.body.source || 'n8n_demo' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-paintops-1",
+      "name": "Normalise Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/events",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "http-paintops-1",
+      "name": "POST FastAPI Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 202
+        },
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "resp-paintops-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Normalise Fields", "type": "main", "index": 0 }]]
+    },
+    "Normalise Fields": {
+      "main": [[{ "node": "POST FastAPI Events", "type": "main", "index": 0 }]]
+    },
+    "POST FastAPI Events": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "paintops-local-demo"
+  },
+  "pinData": {},
+  "versionId": "1"
+}
