@@ -12,7 +12,7 @@ Provide a synthetic overview of common paint-surface defect categories observed 
 
 ## Applicable station
 
-Synthetic CV inspection station on `PAINT-LINE-01` / `PAINT-LINE-02`.
+Synthetic CV inspection stations on `PAINT-LINE-01` … `PAINT-LINE-03`.
 
 ## Example defect symptoms
 

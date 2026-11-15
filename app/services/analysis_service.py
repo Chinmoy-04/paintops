@@ -79,6 +79,12 @@ def analyse_with_demo_rules(
         "runs_sags": "Possible spray application rate or viscosity contribution (hypothesis).",
         "dust_inclusion": "Possible booth contamination or filtration issue (hypothesis).",
         "uneven_coverage": "Possible nozzle pattern or surface-prep contribution (hypothesis).",
+        "fisheye_craters": (
+            "Possible surface contamination or material batch contribution (hypothesis)."
+        ),
+        "color_mismatch": (
+            "Possible material batch or film-build variation contribution (hypothesis)."
+        ),
     }
     suspected = cause_map.get(
         defect, "Insufficient structured evidence for a specific hypothesis."

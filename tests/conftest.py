@@ -57,7 +57,7 @@ def sample_event_payload() -> dict:
         "event_id": "QC-TEST-00001",
         "timestamp": "2026-10-30T09:15:00Z",
         "plant_id": "PLANT-01",
-        "production_line": "PAINT-LINE-02",
+        "production_line": "PAINT-LINE-01",
         "booth_id": "BOOTH-03",
         "body_id": "CAR-008721",
         "defect_type": "orange_peel",
