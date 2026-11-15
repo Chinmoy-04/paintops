@@ -59,36 +59,8 @@ def analyse_with_demo_rules(
         for s in sop_results
     ]
 
-    # Synthetic severity heuristic — not a real quality policy.
-    if confidence >= 0.95 or recurrence_count >= 3:
-        severity: str = "high"
-    elif confidence >= 0.85 or recurrence_count == 2:
-        severity = "medium"
-    else:
-        severity = "low"
-
-    # High-severity demo cases from fixtures.
-    if confidence >= 0.96 and defect in {"runs_sags", "dust_inclusion", "uneven_coverage"}:
-        severity = "critical" if confidence >= 0.98 else "high"
-
-    cause_map = {
-        "orange_peel": (
-            "Possible booth environment and/or atomisation contribution "
-            "(synthetic hypothesis)."
-        ),
-        "runs_sags": "Possible spray application rate or viscosity contribution (hypothesis).",
-        "dust_inclusion": "Possible booth contamination or filtration issue (hypothesis).",
-        "uneven_coverage": "Possible nozzle pattern or surface-prep contribution (hypothesis).",
-        "fisheye_craters": (
-            "Possible surface contamination or material batch contribution (hypothesis)."
-        ),
-        "color_mismatch": (
-            "Possible material batch or film-build variation contribution (hypothesis)."
-        ),
-    }
-    suspected = cause_map.get(
-        defect, "Insufficient structured evidence for a specific hypothesis."
-    )
+    severity = demo_severity(defect, confidence, recurrence_count)
+    suspected = demo_cause_hypothesis(defect)
     if no_sop:
         suspected += " No relevant synthetic SOP chunks were retrieved."
 
@@ -106,6 +78,43 @@ def analyse_with_demo_rules(
             f"Demo rules scored severity={severity} from confidence={confidence} "
             f"and recurrence={recurrence_count}."
         ),
+    )
+
+
+def demo_severity(defect: str, confidence: float, recurrence_count: int) -> str:
+    """Synthetic severity heuristic from model confidence and recurrence. Not a real policy."""
+    if confidence >= 0.95 or recurrence_count >= 3:
+        severity = "high"
+    elif confidence >= 0.85 or recurrence_count == 2:
+        severity = "medium"
+    else:
+        severity = "low"
+
+    # High-severity demo cases from fixtures.
+    if confidence >= 0.96 and defect in {"runs_sags", "dust_inclusion", "uneven_coverage"}:
+        severity = "critical" if confidence >= 0.98 else "high"
+    return severity
+
+
+def demo_cause_hypothesis(defect: str) -> str:
+    """Generic per-defect hypothesis text, used when no specialist found a signal."""
+    cause_map = {
+        "orange_peel": (
+            "Possible booth environment and/or atomisation contribution "
+            "(synthetic hypothesis)."
+        ),
+        "runs_sags": "Possible spray application rate or viscosity contribution (hypothesis).",
+        "dust_inclusion": "Possible booth contamination or filtration issue (hypothesis).",
+        "uneven_coverage": "Possible nozzle pattern or surface-prep contribution (hypothesis).",
+        "fisheye_craters": (
+            "Possible surface contamination or material batch contribution (hypothesis)."
+        ),
+        "color_mismatch": (
+            "Possible material batch or film-build variation contribution (hypothesis)."
+        ),
+    }
+    return cause_map.get(
+        defect, "Insufficient structured evidence for a specific hypothesis."
     )
 
 
