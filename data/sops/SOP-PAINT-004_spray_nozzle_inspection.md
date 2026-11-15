@@ -12,7 +12,7 @@ Outline a synthetic maintenance inspection checklist for spray nozzles when cove
 
 ## Applicable station
 
-Spray robots serving `PAINT-LINE-01` and `PAINT-LINE-02` (synthetic).
+Spray robots serving `PAINT-LINE-01` … `PAINT-LINE-03` (synthetic).
 
 ## Example defect symptoms
 

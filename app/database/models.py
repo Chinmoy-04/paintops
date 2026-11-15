@@ -69,6 +69,8 @@ class Investigation(Base):
     ticket_draft_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     reviewer: Mapped[str | None] = mapped_column(String(128), nullable=True)
     review_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    findings_json: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    revision_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=_utc_now, onupdate=_utc_now
@@ -124,3 +126,86 @@ class AuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now)
 
     investigation: Mapped[Investigation] = relationship(back_populates="audit_events")
+
+
+# ---------------------------------------------------------------------------
+# Synthetic plant context (v2). Read by specialist agents' tools.
+# ---------------------------------------------------------------------------
+
+
+class Booth(Base):
+    """A synthetic paint booth on one of the plant's lines."""
+
+    __tablename__ = "booths"
+
+    booth_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    plant_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    production_line: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    booth_type: Mapped[str] = mapped_column(String(16), nullable=False)  # primer|base|clear
+
+
+class TelemetryReading(Base):
+    """Synthetic booth environment reading (one row per booth per interval)."""
+
+    __tablename__ = "telemetry_readings"
+
+    reading_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    booth_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("booths.booth_id"), nullable=False, index=True
+    )
+    ts: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    temperature_c: Mapped[float] = mapped_column(Float, nullable=False)
+    humidity_pct: Mapped[float] = mapped_column(Float, nullable=False)
+    airflow_m_s: Mapped[float] = mapped_column(Float, nullable=False)
+    filter_dp_pa: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class MaintenanceLog(Base):
+    """Synthetic maintenance record for booth equipment."""
+
+    __tablename__ = "maintenance_logs"
+
+    log_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    booth_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("booths.booth_id"), nullable=False, index=True
+    )
+    ts: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    component: Mapped[str] = mapped_column(String(64), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    technician: Mapped[str] = mapped_column(String(64), nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+
+class MaterialBatch(Base):
+    """Synthetic paint material batch loaded into a booth."""
+
+    __tablename__ = "material_batches"
+
+    batch_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    booth_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("booths.booth_id"), nullable=False, index=True
+    )
+    material: Mapped[str] = mapped_column(String(64), nullable=False)
+    supplier: Mapped[str] = mapped_column(String(64), nullable=False)
+    viscosity_s: Mapped[float] = mapped_column(Float, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+
+
+class InvestigationStep(Base):
+    """One streamed graph step, stored so a run can be replayed in the UI."""
+
+    __tablename__ = "investigation_steps"
+    __table_args__ = (
+        UniqueConstraint("investigation_id", "seq", name="uq_step_investigation_seq"),
+    )
+
+    step_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    investigation_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("investigations.investigation_id"), nullable=False, index=True
+    )
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    node: Mapped[str] = mapped_column(String(64), nullable=False)
+    namespace: Mapped[str] = mapped_column(String(256), default="")
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    payload_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    ts: Mapped[datetime] = mapped_column(DateTime, default=_utc_now)

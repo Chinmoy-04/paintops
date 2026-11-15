@@ -12,7 +12,7 @@ Guide synthetic investigation of orange-peel appearance defects reported by the 
 
 ## Applicable station
 
-Paint booths on `PAINT-LINE-02`, especially `BOOTH-03` in demo fixtures.
+Clearcoat booths (`BOOTH-03`, `BOOTH-06`, `BOOTH-09`), especially `BOOTH-03` on `PAINT-LINE-01` in demo fixtures.
 
 ## Example defect symptoms
 

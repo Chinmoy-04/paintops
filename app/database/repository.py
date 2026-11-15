@@ -9,7 +9,18 @@ from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.database.models import ActionTicket, AuditEvent, InspectionEvent, Investigation, new_uuid
+from app.database.models import (
+    ActionTicket,
+    AuditEvent,
+    Booth,
+    InspectionEvent,
+    Investigation,
+    InvestigationStep,
+    MaintenanceLog,
+    MaterialBatch,
+    TelemetryReading,
+    new_uuid,
+)
 from app.schemas.event import InspectionEventCreate
 
 
@@ -212,5 +223,112 @@ def list_audit_events(session: Session, investigation_id: str) -> list[AuditEven
         select(AuditEvent)
         .where(AuditEvent.investigation_id == investigation_id)
         .order_by(AuditEvent.created_at.asc())
+    )
+    return list(session.scalars(stmt).all())
+
+
+# ---------------------------------------------------------------------------
+# Plant context queries (v2) — used by specialist agent tools.
+# ---------------------------------------------------------------------------
+
+
+def _naive(ts: datetime) -> datetime:
+    return ts.replace(tzinfo=None) if ts.tzinfo else ts
+
+
+def list_booths(session: Session) -> list[Booth]:
+    return list(session.scalars(select(Booth).order_by(Booth.booth_id)).all())
+
+
+def fetch_telemetry(
+    session: Session, *, booth_id: str, start: datetime, end: datetime
+) -> list[TelemetryReading]:
+    """Telemetry readings for one booth in [start, end], oldest first."""
+    stmt = (
+        select(TelemetryReading)
+        .where(TelemetryReading.booth_id == booth_id)
+        .where(TelemetryReading.ts >= _naive(start))
+        .where(TelemetryReading.ts <= _naive(end))
+        .order_by(TelemetryReading.ts.asc())
+    )
+    return list(session.scalars(stmt).all())
+
+
+def fetch_maintenance_logs(
+    session: Session, *, booth_id: str, before: datetime, limit: int = 10
+) -> list[MaintenanceLog]:
+    """Most recent maintenance entries for a booth at or before a time."""
+    stmt = (
+        select(MaintenanceLog)
+        .where(MaintenanceLog.booth_id == booth_id)
+        .where(MaintenanceLog.ts <= _naive(before))
+        .order_by(MaintenanceLog.ts.desc())
+        .limit(limit)
+    )
+    return list(session.scalars(stmt).all())
+
+
+def get_active_batch(
+    session: Session, *, booth_id: str, as_of: datetime
+) -> MaterialBatch | None:
+    """The batch most recently started in a booth at or before as_of."""
+    stmt = (
+        select(MaterialBatch)
+        .where(MaterialBatch.booth_id == booth_id)
+        .where(MaterialBatch.started_at <= _naive(as_of))
+        .order_by(MaterialBatch.started_at.desc())
+    )
+    return session.scalars(stmt).first()
+
+
+def fetch_booth_events(
+    session: Session, *, booth_id: str, start: datetime, end: datetime
+) -> list[InspectionEvent]:
+    """All inspection events (any defect type) for a booth in a window."""
+    stmt = (
+        select(InspectionEvent)
+        .where(InspectionEvent.booth_id == booth_id)
+        .where(InspectionEvent.timestamp >= _naive(start))
+        .where(InspectionEvent.timestamp <= _naive(end))
+        .order_by(InspectionEvent.timestamp.asc())
+    )
+    return list(session.scalars(stmt).all())
+
+
+def add_investigation_step(
+    session: Session,
+    *,
+    investigation_id: str,
+    node: str,
+    kind: str,
+    payload: dict[str, Any] | None = None,
+    namespace: str = "",
+) -> InvestigationStep:
+    """Append a streamed step with the next sequence number for the investigation."""
+    last = session.scalars(
+        select(InvestigationStep.seq)
+        .where(InvestigationStep.investigation_id == investigation_id)
+        .order_by(InvestigationStep.seq.desc())
+    ).first()
+    step = InvestigationStep(
+        investigation_id=investigation_id,
+        seq=(last or 0) + 1,
+        node=node,
+        namespace=namespace,
+        kind=kind,
+        payload_json=payload or {},
+    )
+    session.add(step)
+    session.flush()
+    return step
+
+
+def list_investigation_steps(
+    session: Session, investigation_id: str
+) -> list[InvestigationStep]:
+    stmt = (
+        select(InvestigationStep)
+        .where(InvestigationStep.investigation_id == investigation_id)
+        .order_by(InvestigationStep.seq.asc())
     )
     return list(session.scalars(stmt).all())
