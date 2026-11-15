@@ -12,7 +12,7 @@ Describe fictional environmental checks for temperature, humidity, and airflow w
 
 ## Applicable station
 
-All synthetic paint booths (`BOOTH-01` … `BOOTH-08`).
+All synthetic paint booths (`BOOTH-01` … `BOOTH-09`) on `PAINT-LINE-01` … `PAINT-LINE-03`.
 
 ## Example defect symptoms
 

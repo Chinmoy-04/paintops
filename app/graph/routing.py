@@ -55,3 +55,8 @@ def approval_route(state: dict[str, Any]) -> Literal["approved", "rejected"]:
     if status == "approved":
         return "approved"
     return "rejected"
+
+
+def validation_route(state: dict[str, Any]) -> Literal["valid", "invalid"]:
+    """Route after validate_event: any recorded error ends the run."""
+    return "invalid" if state.get("errors") else "valid"

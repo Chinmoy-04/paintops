@@ -47,7 +47,7 @@ Routing is **deterministic Python** (`RECURRENCE_ACTION_THRESHOLD`, high/critica
   "event_id": "QC-2026-00421",
   "timestamp": "2026-10-30T09:15:00Z",
   "plant_id": "PLANT-01",
-  "production_line": "PAINT-LINE-02",
+  "production_line": "PAINT-LINE-01",
   "booth_id": "BOOTH-03",
   "body_id": "CAR-008721",
   "defect_type": "orange_peel",
@@ -132,7 +132,7 @@ Direct FastAPI:
 ```bash
 curl -X POST http://localhost:8000/api/events ^
   -H "Content-Type: application/json" ^
-  -d "{\"event_id\":\"QC-DEMO-1\",\"timestamp\":\"2026-10-30T09:15:00Z\",\"plant_id\":\"PLANT-01\",\"production_line\":\"PAINT-LINE-02\",\"booth_id\":\"BOOTH-03\",\"body_id\":\"CAR-008721\",\"defect_type\":\"orange_peel\",\"model_confidence\":0.94,\"telemetry\":{\"booth_temperature_c\":24.5,\"humidity_pct\":72.0,\"airflow_m_s\":1.8},\"source\":\"synthetic_cv_inspection\"}"
+  -d "{\"event_id\":\"QC-DEMO-1\",\"timestamp\":\"2026-10-30T09:15:00Z\",\"plant_id\":\"PLANT-01\",\"production_line\":\"PAINT-LINE-01\",\"booth_id\":\"BOOTH-03\",\"body_id\":\"CAR-008721\",\"defect_type\":\"orange_peel\",\"model_confidence\":0.94,\"telemetry\":{\"booth_temperature_c\":24.5,\"humidity_pct\":72.0,\"airflow_m_s\":1.8},\"source\":\"synthetic_cv_inspection\"}"
 ```
 
 n8n webhook (after importing/activating the workflow):
@@ -140,7 +140,7 @@ n8n webhook (after importing/activating the workflow):
 ```bash
 curl -X POST http://localhost:5678/webhook/paintops-event ^
   -H "Content-Type: application/json" ^
-  -d "{\"event_id\":\"QC-N8N-1\",\"timestamp\":\"2026-10-30T09:15:00Z\",\"plant_id\":\"PLANT-01\",\"production_line\":\"PAINT-LINE-02\",\"booth_id\":\"BOOTH-03\",\"body_id\":\"CAR-008721\",\"defect_type\":\"orange_peel\",\"model_confidence\":0.94,\"telemetry\":{\"booth_temperature_c\":24.5,\"humidity_pct\":72.0,\"airflow_m_s\":1.8}}"
+  -d "{\"event_id\":\"QC-N8N-1\",\"timestamp\":\"2026-10-30T09:15:00Z\",\"plant_id\":\"PLANT-01\",\"production_line\":\"PAINT-LINE-01\",\"booth_id\":\"BOOTH-03\",\"body_id\":\"CAR-008721\",\"defect_type\":\"orange_peel\",\"model_confidence\":0.94,\"telemetry\":{\"booth_temperature_c\":24.5,\"humidity_pct\":72.0,\"airflow_m_s\":1.8}}"
 ```
 
 ### Tests and helpers

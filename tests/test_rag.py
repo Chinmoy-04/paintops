@@ -4,9 +4,9 @@ from app.rag.index import build_sop_index, retrieve_sops
 from app.tools.sop_search import search_sops
 
 
-def test_build_index_loads_six_documents() -> None:
+def test_build_index_loads_ten_documents() -> None:
     meta = build_sop_index(force=True)
-    assert meta["documents"] == 6
+    assert meta["documents"] == 10
     assert meta["chunks"] > 0
 
 
