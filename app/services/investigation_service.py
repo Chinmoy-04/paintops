@@ -201,6 +201,8 @@ def investigation_detail(session: Session, investigation_id: str) -> dict[str, A
         "proposed_action": inv.proposed_action,
         "analysis_provider": inv.analysis_provider,
         "ticket_draft": inv.ticket_draft_json,
+        "findings": inv.findings_json or [],
+        "revision_count": inv.revision_count or 0,
         "reviewer": inv.reviewer,
         "review_comment": inv.review_comment,
         "created_at": inv.created_at.isoformat() if inv.created_at else None,

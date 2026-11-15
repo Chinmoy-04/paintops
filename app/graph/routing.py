@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from langgraph.types import Send
+
 from app.config import get_settings
 
 Route = Literal["monitor", "action_required"]
@@ -49,12 +51,29 @@ def route_from_state(state: dict[str, Any]) -> Route:
     )
 
 
-def approval_route(state: dict[str, Any]) -> Literal["approved", "rejected"]:
-    """Route after human review interrupt."""
+# A reviewer can send a draft back for revision at most this many times; after
+# that only approve or reject is accepted.
+MAX_REVISIONS = 2
+
+ApprovalRoute = Literal["approved", "rejected", "revise", "revise_refused"]
+
+
+def approval_route(state: dict[str, Any]) -> ApprovalRoute:
+    """Route after the human review interrupt. Anything unrecognised is a rejection."""
     status = state.get("approval_status")
-    if status == "approved":
-        return "approved"
+    if status in {"approved", "revise", "revise_refused"}:
+        return status  # type: ignore[return-value]
     return "rejected"
+
+
+def dispatch_specialists(state: dict[str, Any]) -> list[Send]:
+    """Fan out: one Send per planned specialist. They run in parallel in one step."""
+    payload = {
+        "event": state.get("event") or {},
+        "investigation_id": state.get("investigation_id"),
+        "recurrence_count": int(state.get("recurrence_count") or 0),
+    }
+    return [Send(f"{name}_agent", payload) for name in state.get("specialists_planned") or []]
 
 
 def validation_route(state: dict[str, Any]) -> Literal["valid", "invalid"]:

@@ -71,3 +71,14 @@ class InspectionEventRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+def event_timestamp(event: dict[str, Any]) -> datetime:
+    """Event time as naive UTC (the storage convention), from a dict or model dump."""
+    raw = event.get("timestamp")
+    if isinstance(raw, datetime):
+        return raw.replace(tzinfo=None) if raw.tzinfo else raw
+    if isinstance(raw, str):
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=None) if parsed.tzinfo else parsed
+    raise ValueError(f"Event has no usable timestamp: {raw!r}")

@@ -209,3 +209,24 @@ class InvestigationStep(Base):
     kind: Mapped[str] = mapped_column(String(32), nullable=False)
     payload_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     ts: Mapped[datetime] = mapped_column(DateTime, default=_utc_now)
+
+
+class NotificationOutbox(Base):
+    """Notifications waiting to be delivered (by n8n from Phase 6 on).
+
+    Written inside the graph's notify node; a separate dispatcher sends them, so a
+    slow or failing mail server can never break an investigation.
+    """
+
+    __tablename__ = "notification_outbox"
+
+    notification_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    investigation_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("investigations.investigation_id"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    payload_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

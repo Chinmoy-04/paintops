@@ -18,6 +18,7 @@ from app.database.models import (
     InvestigationStep,
     MaintenanceLog,
     MaterialBatch,
+    NotificationOutbox,
     TelemetryReading,
     new_uuid,
 )
@@ -330,5 +331,35 @@ def list_investigation_steps(
         select(InvestigationStep)
         .where(InvestigationStep.investigation_id == investigation_id)
         .order_by(InvestigationStep.seq.asc())
+    )
+    return list(session.scalars(stmt).all())
+
+
+def enqueue_notification(
+    session: Session,
+    *,
+    investigation_id: str,
+    kind: str,
+    payload: dict[str, Any] | None = None,
+) -> NotificationOutbox:
+    """Add one pending notification, unless the same kind is already queued for it."""
+    existing = session.scalars(
+        select(NotificationOutbox)
+        .where(NotificationOutbox.investigation_id == investigation_id)
+        .where(NotificationOutbox.kind == kind)
+    ).first()
+    if existing is not None:
+        return existing
+    row = NotificationOutbox(investigation_id=investigation_id, kind=kind, payload_json=payload or {})
+    session.add(row)
+    session.flush()
+    return row
+
+
+def list_notifications(session: Session, investigation_id: str) -> list[NotificationOutbox]:
+    stmt = (
+        select(NotificationOutbox)
+        .where(NotificationOutbox.investigation_id == investigation_id)
+        .order_by(NotificationOutbox.notification_id.asc())
     )
     return list(session.scalars(stmt).all())
