@@ -9,6 +9,7 @@ from app.database.models import (
     InvestigationStep,
     MaintenanceLog,
     MaterialBatch,
+    NotificationOutbox,
     TelemetryReading,
 )
 from app.database.session import Base, get_engine, get_session, init_db
@@ -23,6 +24,7 @@ __all__ = [
     "InvestigationStep",
     "MaintenanceLog",
     "MaterialBatch",
+    "NotificationOutbox",
     "TelemetryReading",
     "get_engine",
     "get_session",
