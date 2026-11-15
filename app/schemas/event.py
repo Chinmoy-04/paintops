@@ -5,13 +5,22 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-DefectType = Literal["orange_peel", "runs_sags", "dust_inclusion", "uneven_coverage"]
+DefectType = Literal[
+    "orange_peel",
+    "runs_sags",
+    "dust_inclusion",
+    "uneven_coverage",
+    "fisheye_craters",
+    "color_mismatch",
+]
 
 DEFECT_TYPES: tuple[str, ...] = (
     "orange_peel",
     "runs_sags",
     "dust_inclusion",
     "uneven_coverage",
+    "fisheye_craters",
+    "color_mismatch",
 )
 
 

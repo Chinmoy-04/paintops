@@ -11,7 +11,7 @@ from langgraph.graph import END, START, StateGraph
 
 from app.config import get_settings
 from app.graph import nodes
-from app.graph.routing import approval_route, route_from_state
+from app.graph.routing import approval_route, route_from_state, validation_route
 from app.graph.state import PaintOpsState
 
 logger = logging.getLogger(__name__)
@@ -34,9 +34,17 @@ def build_graph(checkpointer: Any | None = None):
     graph.add_node("create_ticket", nodes.create_ticket)
     graph.add_node("record_rejection", nodes.record_rejection)
     graph.add_node("record_observation", nodes.record_observation)
+    graph.add_node("record_invalid", nodes.record_invalid)
 
     graph.add_edge(START, "validate_event")
-    graph.add_edge("validate_event", "fetch_line_context")
+    graph.add_conditional_edges(
+        "validate_event",
+        validation_route,
+        {
+            "valid": "fetch_line_context",
+            "invalid": "record_invalid",
+        },
+    )
     graph.add_edge("fetch_line_context", "retrieve_sop")
     graph.add_edge("retrieve_sop", "analyse_deviation")
     graph.add_edge("analyse_deviation", "route_decision")
@@ -60,6 +68,7 @@ def build_graph(checkpointer: Any | None = None):
     graph.add_edge("record_observation", END)
     graph.add_edge("create_ticket", END)
     graph.add_edge("record_rejection", END)
+    graph.add_edge("record_invalid", END)
 
     if checkpointer is not None:
         return graph.compile(checkpointer=checkpointer)

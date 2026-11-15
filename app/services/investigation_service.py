@@ -104,6 +104,7 @@ def start_investigation(
         "approved": "Investigation already approved.",
         "rejected": "Investigation already rejected.",
         "failed": "Investigation failed.",
+        "invalid": "Event failed validation; investigation closed without analysis.",
     }.get(status, f"Investigation status: {status}")
 
     return {
@@ -147,7 +148,24 @@ def apply_decision(
         "reviewer": decision.reviewer,
         "comment": decision.comment,
     }
-    graph.invoke(Command(resume=resume_payload), config=config)
+    try:
+        graph.invoke(Command(resume=resume_payload), config=config)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Resume failed for %s", investigation_id)
+        session.rollback()
+        session.expire_all()
+        failed = get_investigation(session, investigation_id)
+        if failed:
+            update_investigation(session, failed, status="failed")
+            add_audit_event(
+                session,
+                investigation_id=investigation_id,
+                node_name="api",
+                action="resume_failed",
+                details={"error": str(exc), "decision": decision.decision},
+            )
+            session.commit()
+        raise
 
     session.expire_all()
     inv = get_investigation(session, investigation_id)

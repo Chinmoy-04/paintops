@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from langgraph.types import interrupt
@@ -72,7 +72,7 @@ def fetch_line_context(state: PaintOpsState) -> dict[str, Any]:
     elif isinstance(ts_raw, datetime):
         as_of = ts_raw.replace(tzinfo=None) if ts_raw.tzinfo else ts_raw
     else:
-        as_of = datetime.utcnow()
+        as_of = datetime.now(UTC).replace(tzinfo=None)
 
     session = _session()
     try:
@@ -131,7 +131,7 @@ def analyse_deviation_node(state: PaintOpsState) -> dict[str, Any]:
     event = state.get("event") or {}
     recent = state.get("recent_events") or []
     sops = state.get("sop_results") or []
-    recurrence = int(state.get("recurrence_count") or 1)
+    recurrence = int(state.get("recurrence_count") or 0)
     analysis = analyse_deviation(
         event=event,
         recent_events=recent,
@@ -347,4 +347,27 @@ def record_observation(state: PaintOpsState) -> dict[str, Any]:
         session.commit()
     finally:
         session.close()
+    return {}
+
+
+def record_invalid(state: PaintOpsState) -> dict[str, Any]:
+    """Terminal node for events that failed validation: mark invalid, no analysis."""
+    investigation_id = state.get("investigation_id")
+    errors = list(state.get("errors") or [])
+    if investigation_id:
+        session = _session()
+        try:
+            inv = get_investigation(session, investigation_id)
+            if inv:
+                update_investigation(session, inv, status="invalid")
+            add_audit_event(
+                session,
+                investigation_id=investigation_id,
+                node_name="record_invalid",
+                action="event_rejected_invalid",
+                details={"errors": errors},
+            )
+            session.commit()
+        finally:
+            session.close()
     return {}
