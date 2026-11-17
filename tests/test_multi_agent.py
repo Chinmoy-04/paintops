@@ -21,7 +21,7 @@ from app.database.repository import (
 )
 from app.database.seed import WINDOW_END, seed_plant
 from app.database.session import get_session_factory
-from app.graph.builder import build_graph, reset_compiled_graph
+from app.graph.builder import build_graph
 from app.graph.routing import MAX_REVISIONS, dispatch_specialists
 from app.graph.specialists import base as specialist_base
 from app.graph.specialists import specialist_graph
@@ -29,6 +29,7 @@ from app.schemas.decision import DecisionRequest
 from app.schemas.event import InspectionEventCreate
 from app.services import investigation_service
 from app.services.llm import ScriptedChatModel
+from app.services.run_manager import RunManager
 from app.tools import plant_context
 
 
@@ -260,25 +261,27 @@ def test_rejection_queues_a_rejection_notification(sample_event_payload: dict) -
         session.close()
 
 
-def test_decision_replay_through_the_service_is_idempotent(sample_event_payload: dict) -> None:
-    reset_compiled_graph()
+@pytest.mark.asyncio
+async def test_decision_replay_through_the_service_is_idempotent(sample_event_payload: dict) -> None:
+    graph = build_graph(checkpointer=MemorySaver())
+    manager = RunManager(graph_getter=lambda: graph)
     sample_event_payload.update(event_id="QC-IDEM-SVC", model_confidence=0.97, defect_type="runs_sags")
     session = get_session_factory()()
     try:
-        started = investigation_service.start_investigation(
+        accepted = investigation_service.accept_event(
             session, InspectionEventCreate.model_validate(sample_event_payload)
         )
-        assert started["status"] == "awaiting_approval"
-        inv_id = started["investigation_id"]
+        inv_id = accepted["investigation_id"]
+        status = await manager.start(inv_id, accepted["thread_id"], accepted["initial_state"])
+        assert status == "awaiting_approval"
         decision = DecisionRequest(decision="approved", reviewer="qm_demo")
-        first = investigation_service.apply_decision(session, inv_id, decision)
-        second = investigation_service.apply_decision(session, inv_id, decision)
+        first = await investigation_service.apply_decision(session, inv_id, decision, manager)
+        second = await investigation_service.apply_decision(session, inv_id, decision, manager)
         assert first.status == second.status == "approved"
         assert first.ticket_id == second.ticket_id is not None
         assert session.scalar(select(func.count()).select_from(ActionTicket)) == 1
     finally:
         session.close()
-        reset_compiled_graph()
 
 
 def test_a_tool_that_never_ran_is_reported_as_not_checked(

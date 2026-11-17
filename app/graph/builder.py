@@ -1,12 +1,14 @@
-"""Compile the PaintOps LangGraph StateGraph with SQLite checkpointer."""
+"""Compile the PaintOps LangGraph StateGraph with an async SQLite checkpointer."""
 
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 
 from app.config import get_settings
@@ -24,7 +26,6 @@ from app.graph.state import PaintOpsState
 logger = logging.getLogger(__name__)
 
 _compiled = None
-_checkpointer_cm = None
 
 
 SPECIALIST_NODES = [f"{name}_agent" for name in SPECS]
@@ -95,37 +96,34 @@ def build_graph(checkpointer: Any | None = None):
     return graph.compile()
 
 
-def _open_checkpointer() -> SqliteSaver:
-    """Open a persistent SqliteSaver for single-process MVP."""
-    global _checkpointer_cm
-    settings = get_settings()
-    path = Path(settings.checkpoint_db_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # SqliteSaver.from_conn_string returns a context manager in recent versions.
-    cm = SqliteSaver.from_conn_string(str(path))
-    _checkpointer_cm = cm
-    saver = cm.__enter__()
-    return saver
+@asynccontextmanager
+async def open_graph() -> AsyncIterator[Any]:
+    """Open the async checkpointer, compile the graph, and close both on exit.
 
-
-def get_compiled_graph(force_reload: bool = False):
-    """Return a singleton compiled graph with persistent checkpointer."""
+    AsyncSqliteSaver holds an aiosqlite connection that belongs to the running event
+    loop, so it is opened inside the FastAPI lifespan (or a script's asyncio.run),
+    never at import time.
+    """
     global _compiled
-    if _compiled is not None and not force_reload:
-        return _compiled
-    checkpointer = _open_checkpointer()
-    _compiled = build_graph(checkpointer=checkpointer)
-    logger.info("Compiled PaintOps graph with SqliteSaver checkpointer")
+    path = Path(get_settings().checkpoint_db_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    async with AsyncSqliteSaver.from_conn_string(str(path)) as checkpointer:
+        _compiled = build_graph(checkpointer=checkpointer)
+        logger.info("Compiled PaintOps graph with AsyncSqliteSaver checkpointer")
+        try:
+            yield _compiled
+        finally:
+            _compiled = None
+
+
+def get_compiled_graph():
+    """Return the graph opened by `open_graph()`. Raises if it is not open."""
+    if _compiled is None:
+        raise RuntimeError("The graph is not open; it is opened by open_graph() in the app lifespan.")
     return _compiled
 
 
 def reset_compiled_graph() -> None:
-    """Drop cached graph (tests / reset)."""
-    global _compiled, _checkpointer_cm
-    if _checkpointer_cm is not None:
-        try:
-            _checkpointer_cm.__exit__(None, None, None)
-        except Exception:  # noqa: BLE001
-            pass
-    _checkpointer_cm = None
+    """Forget the open graph (tests / reset script). `open_graph()` closes the connection."""
+    global _compiled
     _compiled = None
