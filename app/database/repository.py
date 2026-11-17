@@ -192,6 +192,13 @@ def create_action_ticket(
     return ticket
 
 
+def list_tickets(session: Session, status: str | None = None, limit: int = 100) -> list[ActionTicket]:
+    stmt = select(ActionTicket).order_by(ActionTicket.created_at.desc()).limit(limit)
+    if status:
+        stmt = stmt.where(ActionTicket.status == status)
+    return list(session.scalars(stmt).all())
+
+
 def get_ticket_for_investigation(
     session: Session, investigation_id: str
 ) -> ActionTicket | None:
