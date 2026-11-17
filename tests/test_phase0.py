@@ -32,6 +32,7 @@ from app.graph.builder import build_graph
 from app.schemas.decision import DecisionRequest
 from app.schemas.event import InspectionEventCreate
 from app.services import investigation_service
+from app.services.run_manager import RunManager
 
 
 def test_invalid_event_ends_in_record_invalid_without_analysis(
@@ -68,8 +69,9 @@ def test_invalid_event_ends_in_record_invalid_without_analysis(
         session.close()
 
 
-def test_failed_resume_marks_investigation_failed(
-    sample_event_payload: dict, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.asyncio
+async def test_failed_resume_marks_investigation_failed(
+    sample_event_payload: dict,
 ) -> None:
     session = get_session_factory()()
     try:
@@ -84,18 +86,20 @@ def test_failed_resume_marks_investigation_failed(
         session.close()
 
     class ExplodingGraph:
-        def invoke(self, *args, **kwargs):
+        async def astream(self, *args, **kwargs):
             raise RuntimeError("checkpoint store unavailable")
+            yield  # an async generator, like the real astream
 
-    monkeypatch.setattr(investigation_service, "get_compiled_graph", lambda: ExplodingGraph())
+    manager = RunManager(graph_getter=lambda: ExplodingGraph())
 
     session = get_session_factory()()
     try:
         with pytest.raises(RuntimeError):
-            investigation_service.apply_decision(
+            await investigation_service.apply_decision(
                 session,
                 inv_id,
                 DecisionRequest(decision="approved", reviewer="qa_demo"),
+                manager,
             )
     finally:
         session.close()
@@ -106,6 +110,8 @@ def test_failed_resume_marks_investigation_failed(
         assert get_ticket_for_investigation(session, inv_id) is None
         actions = [a.action for a in list_audit_events(session, inv_id)]
         assert "resume_failed" in actions
+        steps = [s.kind for s in list_investigation_steps(session, inv_id)]
+        assert steps == ["run_started", "run_failed"]
     finally:
         session.close()
 

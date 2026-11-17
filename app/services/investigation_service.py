@@ -1,14 +1,13 @@
-"""Orchestration: start investigations and resume approvals."""
+"""Orchestration: accept events, hand runs to the RunManager, apply reviewer decisions."""
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
-from langgraph.types import Command
 from sqlalchemy.orm import Session
 
-from app.database.models import new_uuid
 from app.database.repository import (
     add_audit_event,
     create_inspection_event,
@@ -17,22 +16,21 @@ from app.database.repository import (
     get_investigation_by_event,
     get_ticket_for_investigation,
     list_investigations,
-    update_investigation,
 )
-from app.graph.builder import get_compiled_graph
+from app.graph.routing import MAX_REVISIONS
 from app.schemas.decision import DecisionRequest, DecisionResponse
 from app.schemas.event import InspectionEventCreate
+from app.services.run_manager import RunManager
 
 logger = logging.getLogger(__name__)
 
 
-def start_investigation(
-    session: Session, payload: InspectionEventCreate
-) -> dict[str, Any]:
-    """
-    Validate/store event and run the LangGraph workflow until interrupt or end.
+def accept_event(session: Session, payload: InspectionEventCreate) -> dict[str, Any]:
+    """Store the event and create its investigation. Does not run the graph.
 
-    Idempotent on event_id: returns existing investigation if already present.
+    Idempotent on event_id: an event that already has an investigation returns it with
+    `created=False`. When `created` is True the result carries `initial_state`, and the
+    caller starts the run with `RunManager.start` (see `submit_event`).
     """
     event, created = create_inspection_event(session, payload)
     existing_inv = get_investigation_by_event(session, event.event_id)
@@ -56,72 +54,42 @@ def start_investigation(
         details={"event_id": event.event_id, "new_event": created},
     )
     session.commit()
-
-    graph = get_compiled_graph()
-    event_dict = payload.model_dump(mode="json")
-    config = {"configurable": {"thread_id": investigation.thread_id}}
-    initial_state = {
-        "event": event_dict,
-        "investigation_id": investigation.investigation_id,
-        "thread_id": investigation.thread_id,
-        "errors": [],
-    }
-
-    try:
-        result = graph.invoke(initial_state, config=config)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Graph failed for %s", investigation.investigation_id)
-        inv = get_investigation(session, investigation.investigation_id)
-        if inv:
-            update_investigation(session, inv, status="failed")
-            add_audit_event(
-                session,
-                investigation_id=investigation.investigation_id,
-                node_name="api",
-                action="investigation_failed",
-                details={"error": str(exc)},
-            )
-            session.commit()
-        raise
-
-    # Refresh status from DB (nodes update it).
-    session.expire_all()
-    inv = get_investigation(session, investigation.investigation_id)
-    status = inv.status if inv else "processing"
-
-    # If graph interrupted, status should already be awaiting_approval.
-    # Detect interrupt via graph state next nodes.
-    snapshot = graph.get_state(config)
-    if snapshot and snapshot.next:
-        status = "awaiting_approval"
-        if inv and inv.status != "awaiting_approval":
-            update_investigation(session, inv, status="awaiting_approval")
-            session.commit()
-
-    message = {
-        "awaiting_approval": "Investigation completed and is waiting for human review.",
-        "monitored": "Investigation recorded as monitor-only; no ticket created.",
-        "approved": "Investigation already approved.",
-        "rejected": "Investigation already rejected.",
-        "failed": "Investigation failed.",
-        "invalid": "Event failed validation; investigation closed without analysis.",
-    }.get(status, f"Investigation status: {status}")
-
     return {
         "event_id": event.event_id,
         "investigation_id": investigation.investigation_id,
         "thread_id": investigation.thread_id,
-        "status": status,
-        "message": message,
+        "status": investigation.status,
+        "message": "Investigation accepted and running; follow it on the stream URL.",
         "created": True,
-        "result_keys": list(result.keys()) if isinstance(result, dict) else [],
+        "initial_state": {
+            "event": payload.model_dump(mode="json"),
+            "investigation_id": investigation.investigation_id,
+            "thread_id": investigation.thread_id,
+            "errors": [],
+        },
     }
 
 
-def apply_decision(
-    session: Session, investigation_id: str, decision: DecisionRequest
+def submit_event(session: Session, payload: InspectionEventCreate, manager: RunManager) -> dict[str, Any]:
+    """Accept an event and, if it is new, start its run in the background."""
+    result = accept_event(session, payload)
+    if result["created"]:
+        manager.start(result["investigation_id"], result["thread_id"], result.pop("initial_state"))
+    return result
+
+
+async def apply_decision(
+    session: Session,
+    investigation_id: str,
+    decision: DecisionRequest,
+    manager: RunManager,
 ) -> DecisionResponse:
-    """Resume a paused graph thread with an approve/reject decision (idempotent)."""
+    """Resume a paused graph thread with an approve / reject / revise decision.
+
+    Idempotent for approved and rejected. The resumed run is short (create the ticket
+    and queue the notification, or draft a revision), so this waits for it; its steps
+    still stream to subscribers. `shield` keeps the run going if the client disconnects.
+    """
     inv = get_investigation(session, investigation_id)
     if inv is None:
         raise LookupError(f"Investigation not found: {investigation_id}")
@@ -135,51 +103,40 @@ def apply_decision(
             message="Decision already recorded; returning existing outcome.",
         )
 
-    if inv.status != "awaiting_approval":
+    if inv.status != "awaiting_approval" or manager.is_active(investigation_id):
         raise ValueError(
             f"Investigation {investigation_id} is not awaiting approval "
             f"(status={inv.status})."
         )
+    if decision.decision == "revise" and (inv.revision_count or 0) >= MAX_REVISIONS:
+        raise ValueError(
+            f"Investigation {investigation_id} already used its {MAX_REVISIONS} revisions; "
+            "approve or reject it."
+        )
 
-    graph = get_compiled_graph()
-    config = {"configurable": {"thread_id": inv.thread_id}}
     resume_payload = {
         "decision": decision.decision,
         "reviewer": decision.reviewer,
         "comment": decision.comment,
     }
-    try:
-        graph.invoke(Command(resume=resume_payload), config=config)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Resume failed for %s", investigation_id)
-        session.rollback()
-        session.expire_all()
-        failed = get_investigation(session, investigation_id)
-        if failed:
-            update_investigation(session, failed, status="failed")
-            add_audit_event(
-                session,
-                investigation_id=investigation_id,
-                node_name="api",
-                action="resume_failed",
-                details={"error": str(exc), "decision": decision.decision},
-            )
-            session.commit()
-        raise
+    status = await asyncio.shield(manager.resume(investigation_id, inv.thread_id, resume_payload))
+    if status == "failed":
+        raise RuntimeError(f"Resuming investigation {investigation_id} failed; see its audit log.")
 
     session.expire_all()
     inv = get_investigation(session, investigation_id)
     assert inv is not None
     ticket = get_ticket_for_investigation(session, investigation_id)
+    message = {
+        "approved": "Approved; ticket created.",
+        "rejected": "Rejected; no ticket created.",
+        "revise": "Revision requested; a new draft is awaiting review.",
+    }[decision.decision]
     return DecisionResponse(
         investigation_id=investigation_id,
         status=inv.status,
         ticket_id=ticket.ticket_id if ticket else None,
-        message=(
-            "Approved; ticket created."
-            if decision.decision == "approved"
-            else "Rejected; no ticket created."
-        ),
+        message=message,
     )
 
 

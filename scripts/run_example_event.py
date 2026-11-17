@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -12,10 +13,12 @@ if str(ROOT) not in sys.path:
 
 from app.database.session import get_session_factory, init_db
 from app.schemas.event import InspectionEventCreate
-from app.services.investigation_service import start_investigation
+from app.graph.builder import open_graph
+from app.services.investigation_service import accept_event
+from app.services.run_manager import RunManager
 
 
-def main() -> None:
+async def main() -> None:
     init_db()
     payload = InspectionEventCreate.model_validate(
         {
@@ -37,12 +40,18 @@ def main() -> None:
     )
     session = get_session_factory()()
     try:
-        result = start_investigation(session, payload)
-        session.commit()
+        result = accept_event(session, payload)
     finally:
         session.close()
+    if result["created"]:
+        # The API does the same in the background; here we wait for the run to end.
+        async with open_graph():
+            initial_state = result.pop("initial_state")
+            result["status"] = await RunManager().start(
+                result["investigation_id"], result["thread_id"], initial_state
+            )
     print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -6,6 +6,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_API_KEY = "paintops-dev-key"
 
 
 class Settings(BaseSettings):
@@ -42,6 +43,13 @@ class Settings(BaseSettings):
     sop_top_k: int = 3
 
     paintops_api_base: str = "http://localhost:8000"
+
+    # Shared secret for ingest and n8n-facing routes, sent as the X-PaintOps-Key header.
+    # The default only exists so a fresh checkout runs; the API logs a warning while
+    # it is in use. Set your own in .env.
+    paintops_api_key: str = DEFAULT_API_KEY
+    # Browser origins allowed to call the API (the Vite dev server from Phase 3).
+    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     @property
     def database_path(self) -> Path:
