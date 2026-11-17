@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class DecisionRequest(BaseModel):
     """Reviewer decision payload for resuming a paused investigation."""
 
-    decision: Literal["approved", "rejected"]
+    decision: Literal["approved", "rejected", "revise"]
     reviewer: str = Field(..., min_length=1, max_length=128)
     comment: str | None = None
 

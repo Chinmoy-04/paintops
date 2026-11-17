@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import json
 import operator
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal, TypedDict
 
 from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
+from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.types import RetryPolicy, default_retry_on
@@ -31,6 +33,9 @@ from app.schemas.finding import Finding, SpecialistName, ToolCallRecord
 from app.services.llm import get_chat_model, provider_name
 
 MAX_TOOL_ROUNDS = 4
+# Tool results in live stream events are cut to this many characters (the full result
+# is in the Finding).
+STREAM_SUMMARY_CHARS = 300
 
 
 def _retry_model_errors(exc: Exception) -> bool:
@@ -119,14 +124,29 @@ def build_specialist_graph(spec: SpecialistSpec):
     def tools(state: SpecialistState) -> dict[str, Any]:
         by_name = {t.name: t for t in spec.make_tools(state["event"])}
         last = state["messages"][-1]
+        # Custom stream events (stream_mode="custom"): the live view shows each tool
+        # call as it happens. Outside a streaming run the writer does nothing.
+        writer = get_stream_writer()
         replies: list[ToolMessage] = []
         log: list[dict[str, Any]] = []
         for call in last.tool_calls:
+            writer({"type": "tool_call", "specialist": spec.name, "tool": call["name"], "args": call["args"]})
+            started = time.perf_counter()
             tool = by_name.get(call["name"])
             if tool is None:
                 result: Any = {"error": f"Unknown tool {call['name']}"}
             else:
                 result = tool.invoke(call["args"])
+            writer(
+                {
+                    "type": "tool_result",
+                    "specialist": spec.name,
+                    "tool": call["name"],
+                    "ok": not (isinstance(result, dict) and "error" in result),
+                    "duration_ms": round((time.perf_counter() - started) * 1000),
+                    "summary": json.dumps(result, default=str)[:STREAM_SUMMARY_CHARS],
+                }
+            )
             log.append({"name": call["name"], "args": call["args"], "result": result})
             replies.append(
                 ToolMessage(content=json.dumps(result, default=str), tool_call_id=call["id"], name=call["name"])

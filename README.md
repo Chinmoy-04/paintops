@@ -132,6 +132,7 @@ Direct FastAPI:
 ```bash
 curl -X POST http://localhost:8000/api/events ^
   -H "Content-Type: application/json" ^
+  -H "X-PaintOps-Key: paintops-dev-key" ^
   -d "{\"event_id\":\"QC-DEMO-1\",\"timestamp\":\"2026-10-30T09:15:00Z\",\"plant_id\":\"PLANT-01\",\"production_line\":\"PAINT-LINE-01\",\"booth_id\":\"BOOTH-03\",\"body_id\":\"CAR-008721\",\"defect_type\":\"orange_peel\",\"model_confidence\":0.94,\"telemetry\":{\"booth_temperature_c\":24.5,\"humidity_pct\":72.0,\"airflow_m_s\":1.8},\"source\":\"synthetic_cv_inspection\"}"
 ```
 
