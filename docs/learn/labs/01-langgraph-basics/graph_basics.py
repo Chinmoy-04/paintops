@@ -1,6 +1,24 @@
-"""L1: the smallest useful LangGraph. A thermostat that decides to heat, cool, or wait.
+"""Lab L1: the smallest useful LangGraph.
 
-Run:  python graph_basics.py
+The story: a thermostat. It reads the temperature, then picks ONE of three actions.
+
+    too cold (below 19)  ->  turn the heater on
+    too hot  (above 23)  ->  turn the fan on
+    anything else        ->  do nothing
+
+Drawn as a graph:
+
+               START
+                 |
+              measure
+            /    |    \\
+         heat   wait   cool
+            \\    |    /
+                END
+
+Run it from the repo root:
+
+    .venv/Scripts/python.exe docs/learn/labs/01-langgraph-basics/graph_basics.py
 """
 
 from typing import TypedDict
@@ -9,36 +27,90 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 
-class State(TypedDict, total=False):  # 1. state: the data every node can read
-    reading: float
-    action: str
+# STEP 1. The STATE: the one shared notepad every node reads from and writes to.
+#         `total=False` means a key can be missing until some node writes it
+#         (`action` is empty until heat, cool or wait runs).
+class State(TypedDict, total=False):
+    reading: float  # the temperature
+    action: str  # what the thermostat decided to do
 
 
-def measure(state: State) -> dict:  # 2. a node: read state, return only what changed
-    return {"reading": round(state["reading"], 1)}
+# STEP 2. NODES: plain functions. Each one gets the state and returns ONLY the keys it
+#         wants to change. LangGraph copies those keys into the state for you.
+def measure(state: State) -> dict:
+    reading = round(state["reading"], 1)
+    print(f"    [measure] the reading is {reading}")
+    return {"reading": reading}
 
 
-def decide(state: State) -> str:  # 3. a router: returns the NAME of the next branch
-    return "heat" if state["reading"] < 19 else "cool" if state["reading"] > 23 else "wait"
+def heat(state: State) -> dict:
+    print("    [heat] too cold")
+    return {"action": "heater on"}
 
 
+def cool(state: State) -> dict:
+    print("    [cool] too hot")
+    return {"action": "fan on"}
+
+
+def wait(state: State) -> dict:
+    print("    [wait] just right")
+    return {"action": "nothing to do"}
+
+
+# STEP 3. A ROUTER: looks at the state and returns the NAME of the node to run next.
+#         It never changes the state.
+def decide(state: State) -> str:
+    if state["reading"] < 19:
+        return "heat"
+    if state["reading"] > 23:
+        return "cool"
+    return "wait"
+
+
+# STEP 4. Build the graph: register the nodes, then connect them with edges.
 graph = StateGraph(State)
 graph.add_node("measure", measure)
-graph.add_node("heat", lambda s: {"action": "heater on"})
-graph.add_node("cool", lambda s: {"action": "fan on"})
-graph.add_node("wait", lambda s: {"action": "nothing to do"})
-graph.add_edge(START, "measure")  # 4. a normal edge: always go from A to B
-graph.add_conditional_edges("measure", decide, ["heat", "cool", "wait"])  # 5. a conditional edge
-for name in ("heat", "cool", "wait"):
-    graph.add_edge(name, END)
-app = graph.compile(checkpointer=MemorySaver())  # 6. a checkpointer: saves state per thread
+graph.add_node("heat", heat)
+graph.add_node("cool", cool)
+graph.add_node("wait", wait)
+
+# A NORMAL EDGE always goes from A to B. START and END are built in.
+graph.add_edge(START, "measure")
+
+# A CONDITIONAL EDGE: after `measure`, call `decide` and go wherever it says.
+# The list names every node `decide` is allowed to pick.
+graph.add_conditional_edges("measure", decide, ["heat", "cool", "wait"])
+
+graph.add_edge("heat", END)
+graph.add_edge("cool", END)
+graph.add_edge("wait", END)
+
+# STEP 5. COMPILE: check the wiring and get back a runnable app.
+# STEP 6. The CHECKPOINTER saves the state after every step. Each conversation or job
+#         gets its own `thread_id`, so the saved states never mix.
+app = graph.compile(checkpointer=MemorySaver())
+
+
+def heading(text: str) -> None:
+    print(f"\n=== {text} ===")
+
 
 if __name__ == "__main__":
-    for thread, temp in [("kitchen", 17.04), ("attic", 26.3)]:
-        config = {"configurable": {"thread_id": thread}}
-        print(thread, "->", app.invoke({"reading": temp}, config))
-    # The checkpointer remembers each thread's last state; read it back by thread id.
-    print("saved kitchen state:", app.get_state({"configurable": {"thread_id": "kitchen"}}).values)
-    # The history lists every checkpoint, newest first: one per step of the run.
-    history = list(app.get_state_history({"configurable": {"thread_id": "attic"}}))
-    print("attic checkpoints:", len(history), "next nodes:", [h.next for h in history])
+    kitchen = {"configurable": {"thread_id": "kitchen"}}
+    attic = {"configurable": {"thread_id": "attic"}}
+
+    heading("1. invoke(): run the whole graph, get the final state")
+    final = app.invoke({"reading": 17.04}, kitchen)
+    print("final state:", final)
+
+    heading("2. stream(): run the graph, get one update per node as it finishes")
+    for update in app.stream({"reading": 26.3}, attic, stream_mode="updates"):
+        print("update:", update)
+
+    heading("3. get_state(): read a thread's saved state back later")
+    print("kitchen:", app.get_state(kitchen).values)
+
+    heading("4. get_state_history(): every saved checkpoint, newest first")
+    for snapshot in app.get_state_history(attic):
+        print("state:", snapshot.values, "| runs next:", snapshot.next)
