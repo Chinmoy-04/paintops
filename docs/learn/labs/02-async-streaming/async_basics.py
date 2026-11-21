@@ -1,49 +1,73 @@
-"""L2 part 1: async/await in 30 lines. Three slow "downloads", sequential vs concurrent.
+"""Lab L2, part 1: async/await, in four small demos.
 
-Run:  python async_basics.py
+Think of one cook in a kitchen. Boiling a kettle takes a while, but the cook does not
+stand and stare at it: they start it, then go and do something else. `await` is the
+cook saying "this will take a while, go do something else until it is ready".
+
+Run it from the repo root:
+
+    .venv/Scripts/python.exe docs/learn/labs/02-async-streaming/async_basics.py
 """
 
 import asyncio
 import time
 
 
-async def download(name: str, seconds: float) -> str:
-    # `await` hands control back to the event loop while we wait, so other
-    # coroutines can run. time.sleep() here would block every one of them.
+# `async def` makes a COROUTINE: a function that is allowed to pause.
+async def boil(name: str, seconds: float) -> str:
+    # `await asyncio.sleep` pauses THIS coroutine and lets the others run meanwhile.
+    # (A plain `time.sleep` would freeze everything; see the README's exercise 1.)
     await asyncio.sleep(seconds)
     return f"{name} done"
 
 
-async def main() -> None:
-    jobs = [("a", 1.0), ("b", 1.0), ("c", 1.0)]
-
+async def demo_1_one_after_another() -> None:
+    print("\n=== 1. await one at a time: 3 kettles x 1 s ===")
     start = time.perf_counter()
-    for name, s in jobs:
-        await download(name, s)  # one after another
-    print(f"sequential: {time.perf_counter() - start:.1f}s")
+    for name in ["a", "b", "c"]:
+        await boil(name, 1.0)  # wait for this one to finish before starting the next
+    print(f"took {time.perf_counter() - start:.1f}s")
 
+
+async def demo_2_all_at_once() -> None:
+    print("\n=== 2. asyncio.gather: start all 3, wait for all 3 ===")
     start = time.perf_counter()
-    results = await asyncio.gather(*(download(n, s) for n, s in jobs))  # all at once
-    print(f"gather:     {time.perf_counter() - start:.1f}s", results)
+    results = await asyncio.gather(boil("a", 1.0), boil("b", 1.0), boil("c", 1.0))
+    print(f"took {time.perf_counter() - start:.1f}s, results: {results}")
 
-    # A Task starts running in the background right away; you can await it later.
-    task = asyncio.create_task(download("background", 0.5))
-    print("task started, doing other work...")
-    print("task result:", await task)
 
-    # A Queue lets one coroutine hand items to another as they are produced.
+async def demo_3_background_task() -> None:
+    print("\n=== 3. asyncio.create_task: start it now, collect the result later ===")
+    task = asyncio.create_task(boil("background kettle", 0.5))  # starts running now
+    print("task started, the cook is free to do other work...")
+    print("result:", await task)  # now wait for it
+
+
+async def demo_4_queue() -> None:
+    print("\n=== 4. asyncio.Queue: one coroutine hands items to another ===")
     queue: asyncio.Queue[str | None] = asyncio.Queue()
 
     async def producer() -> None:
         for i in range(3):
             await asyncio.sleep(0.2)
+            print(f"producer put item {i}")
             await queue.put(f"item {i}")
-        await queue.put(None)  # a sentinel: "no more items"
+        await queue.put(None)  # None means "no more items"
 
     asyncio.create_task(producer())
-    while (item := await queue.get()) is not None:
-        print("consumer got", item)
+    while True:
+        item = await queue.get()  # waits here until something is in the queue
+        if item is None:
+            break
+        print(f"consumer got {item}")
+
+
+async def main() -> None:
+    await demo_1_one_after_another()
+    await demo_2_all_at_once()
+    await demo_3_background_task()
+    await demo_4_queue()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())  # start the event loop and run main() on it
